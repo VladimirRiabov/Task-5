@@ -7,21 +7,14 @@
 
 import SwiftUI
 
-struct Response: Codable {
-    var results: [User]
-}
 
-struct User: Codable {
-    let id: Int
-    let name: String
-    let image: String
-    let species: String
-    
-}
 
 struct ContentView: View {
-    @State private var results = [User]()
+
     @State private var searchText = ""
+    @StateObject var viewModel  = ViewModel()
+    @State private var isSearching = false
+    
     
     init() {
         UITableView.appearance().backgroundColor = UIColor(red: 0.22, green: 0.23, blue: 0.30, alpha: 1)
@@ -30,7 +23,8 @@ struct ContentView: View {
         NavigationView {
             ZStack {
                 VStack(alignment: .leading) {
-                    Text("Рекомендации")
+//
+                    Text(searchText.isEmpty ? "Рекомендации" : "Найденные")
                         .font(.headline)
                         .padding()
                     List(searchResults, id: \.id) { user in
@@ -52,6 +46,38 @@ struct ContentView: View {
                         .listRowBackground(Color(red: 0.22, green: 0.23, blue: 0.30))
                     }
                     .listStyle(.grouped)
+                    
+                    if searchText.isEmpty == false {
+                        Rectangle()
+                            .frame(height: 2)
+                            .foregroundColor(.white)
+                            .opacity(0.5)
+                            
+                            .padding(.vertical)
+                            .padding(.vertical)
+                        Text("Рекомендации")
+                            .font(.headline)
+                            .padding()
+                        List(viewModel.results.filter {!$0.name.contains(searchText) } , id: \.id) { user in
+                            
+                            HStack {
+
+                                AsyncImage(url: URL(string: user.image)) { image in
+                                    image.resizable()
+                                } placeholder: {
+                                    Color.gray
+                                }
+                                .frame(width: 100, height: 90)
+                                .clipShape(Circle())
+
+                                Text(user.name)
+                    
+                            }
+                            
+                            .listRowBackground(Color(red: 0.22, green: 0.23, blue: 0.30))
+                        }
+                        .listStyle(.grouped)
+                    }
 
                 }
             }
@@ -65,7 +91,7 @@ struct ContentView: View {
             
     //
             .task {
-                await loadData()
+                await viewModel.loadData()
             }
             
             
@@ -73,34 +99,14 @@ struct ContentView: View {
         
     }
       
-    func loadData() async {
-        //1. make url
-        
-        guard let url = URL(string: "https://rickandmortyapi.com/api/character") else {
-            print("Invalid Url")
-            return
-        }
-        //2. Получаем данные
-        do {
-            
-            let (data, _) = try await URLSession.shared.data(from: url)
-            
-            if let decodedResponse = try? JSONDecoder().decode(Response.self, from: data) {
-                results = decodedResponse.results
-                print("dfdfdf")
-            }
-        } catch {
-            print("Invalid data")
-        }
-        
-       
-    }
     
     var searchResults: [User] {
             if searchText.isEmpty {
-                return results
+                
+                return viewModel.results
             } else {
-                return results.filter { $0.name.contains(searchText) }
+                
+                return viewModel.results.filter { $0.name.contains(searchText) }
             }
         }
     
